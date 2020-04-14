@@ -1,1 +1,30 @@
 DROP PROCEDURE IF EXISTS dt_wxm_parse_first_middle_last_name
+CREATE PROCEDURE dt_wxm_parse_first_middle_last_name(first_column VARCHAR(255),middle_column VARCHAR(255),last_column VARCHAR(255),target_table VARCHAR(100),linkingId VARCHAR(255),extra_criteria VARCHAR(255)) LANGUAGE SQL MODIFIES SQL DATA  SQL SECURITY  DEFINER
+BEGIN
+
+SELECT REPLACE(first_column,'`','``') INTO @first_column;
+SELECT REPLACE(middle_column,'`','``') INTO @middle_column;
+SELECT REPLACE(last_column,'`','``') INTO @last_column;
+SELECT REPLACE(linkingId,'`','``') INTO @linkingId;
+
+SET @first_column = CONCAT('`',@first_column,'`');
+SET @middle_column = CONCAT('`',@middle_column,'`');
+SET @last_column = CONCAT('`',@last_column,'`');
+
+PREPARE pstmt_drop_table FROM 'DROP TABLE IF EXISTS z_newcreate_wxm_parsed_name, z_newcreate_wxm_one_parsed_name, z_newcreate_wxm_parsed_max_name_number';
+EXECUTE pstmt_drop_table;
+PREPARE pstmt_create_table FROM "CREATE TABLE `z_newcreate_wxm_parsed_name` (firstName VARCHAR(255) DEFAULT NULL,  middleName VARCHAR(255) DEFAULT NULL, lastName VARCHAR(255) DEFAULT NULL,  linkingId int(11) NOT NULL, prefix1 VARCHAR(20) DEFAULT NULL, firstName1 VARCHAR(255) DEFAULT NULL, middleName1 VARCHAR(10) DEFAULT NULL, lastName1 VARCHAR(255) DEFAULT NULL, suffix1 VARCHAR(50) DEFAULT NULL, prefix2 VARCHAR(20) DEFAULT NULL, firstName2 VARCHAR(255) DEFAULT NULL, middleName2 VARCHAR(10) DEFAULT NULL, lastName2 VARCHAR(255) DEFAULT NULL, suffix2 VARCHAR(50) DEFAULT NULL, PRIMARY KEY(linkingId))";
+EXECUTE pstmt_create_table;
+PREPARE pstmt_create_table FROM "CREATE TABLE `z_newcreate_wxm_one_parsed_name` (words VARCHAR(255) DEFAULT NULL,  rowId int(11) NOT NULL AUTO_INCREMENT, type VARCHAR(20) DEFAULT NULL, nameNumber INT DEFAULT NULL, PRIMARY KEY(rowId))";
+EXECUTE pstmt_create_table;
+PREPARE pstmt_create_table FROM "CREATE TABLE `z_newcreate_wxm_parsed_max_name_number` (maxNameNumber INT DEFAULT NULL)";
+EXECUTE pstmt_create_table;
+
+SET @sql_stmt=CONCAT("INSERT INTO z_newcreate_wxm_parsed_name (firstName, middleName, lastName,  linkingId) SELECT ",IFNULL(@first_column, 'NULL'),',',IFNULL(@middle_column, 'NULL'),',',IFNULL(@last_column, 'NULL'),',',@linkingId,' FROM ',target_table,' WHERE (',IFNULL(@first_column, 'NULL'),' IS NOT NULL OR ',IFNULL(@middle_column, 'NULL'),' IS NOT NULL OR ',IFNULL(@last_column, 'NULL'),' IS NOT NULL)',IFNULL(CONCAT(' AND ',extra_criteria),''));
+
+PREPARE pstmt FROM @sql_stmt;
+EXECUTE pstmt;
+
+CALL dt_wxm_parse_first_middle_last_name_detail();
+
+END //
